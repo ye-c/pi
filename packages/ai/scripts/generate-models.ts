@@ -2438,6 +2438,110 @@ async function generateModels() {
 		}
 	}
 
+	// Add missing GLM Flash models to zai and zai-coding-cn providers
+	for (const zaiProvider of ["zai", "zai-coding-cn"] as const) {
+		const baseUrl =
+			zaiProvider === "zai"
+				? "https://api.z.ai/api/coding/paas/v4"
+				: "https://open.bigmodel.cn/api/coding/paas/v4";
+
+		const missingZaiModels = [
+			{
+				id: "glm-4.7-flash",
+				name: "GLM-4.7-Flash",
+				api: "openai-completions",
+				reasoning: true,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 204800,
+				maxTokens: 131072,
+				compat: {
+					supportsDeveloperRole: false,
+					thinkingFormat: "zai",
+					zaiToolStream: true,
+				},
+			},
+			{
+				id: "glm-4-flash-250414",
+				name: "GLM-4-Flash-250414",
+				api: "openai-completions",
+				reasoning: true,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 128000,
+				maxTokens: 4096,
+				compat: {
+					supportsDeveloperRole: false,
+					thinkingFormat: "zai",
+					zaiToolStream: true,
+				},
+			},
+			{
+				id: "glm-4.6v-flash",
+				name: "GLM-4.6V-Flash",
+				api: "openai-completions",
+				reasoning: true,
+				input: ["text", "image"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 128000,
+				maxTokens: 4096,
+				compat: {
+					supportsDeveloperRole: false,
+					thinkingFormat: "zai",
+					zaiToolStream: true,
+				},
+			},
+			{
+				id: "glm-4.1v-thinking-flash",
+				name: "GLM-4.1V-Thinking-Flash",
+				api: "openai-completions",
+				reasoning: true,
+				input: ["text", "image"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 64000,
+				maxTokens: 4096,
+				compat: {
+					supportsDeveloperRole: false,
+					thinkingFormat: "zai",
+					zaiToolStream: true,
+				},
+			},
+			{
+				id: "glm-4.5-flash",
+				name: "GLM-4.5-Flash",
+				api: "openai-completions",
+				reasoning: true,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: 128000,
+				maxTokens: 4096,
+				compat: {
+					supportsDeveloperRole: false,
+					thinkingFormat: "zai",
+					zaiToolStream: false,
+				},
+			},
+		] as const;
+
+		for (const m of missingZaiModels) {
+			if (!allModels.some((model) => model.provider === zaiProvider && model.id === m.id)) {
+				allModels.push({
+					id: m.id,
+					name: m.name,
+					api: m.api as Api,
+					provider: zaiProvider,
+					baseUrl,
+					reasoning: m.reasoning,
+					input: m.input as ("text" | "image")[],
+					cost: m.cost,
+					contextWindow: m.contextWindow,
+					maxTokens: m.maxTokens,
+					compat: m.compat,
+				});
+			}
+		}
+	}
+
 	// Add "auto" alias for openrouter/auto
 	if (!allModels.some(m => m.provider === "openrouter" && m.id === "auto")) {
 		allModels.push({
