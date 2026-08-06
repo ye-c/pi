@@ -423,6 +423,11 @@ export async function processResponsesStream<TApi extends Api>(
 	let sawTerminalResponseEvent = false;
 	const outputSlots = new Map<number, ResponsesOutputSlot>();
 	const reasoningBlocksById = new Map<string, ThinkingContent>();
+	const applyMessagePhaseStopReason = (item: ResponseOutputItem): void => {
+		if (item.type === "message" && item.phase === "final_answer") {
+			output.stopReason = "stop";
+		}
+	};
 	const getSlot = <TType extends ResponsesOutputSlot["type"]>(
 		outputIndex: number,
 		type: TType,
@@ -453,6 +458,7 @@ export async function processResponsesStream<TApi extends Api>(
 			return slot;
 		}
 		if (item.type === "message") {
+			applyMessagePhaseStopReason(item);
 			const block: TextContent = { type: "text", text: "" };
 			output.content.push(block);
 			const slot = { type: "text", block, contentIndex: output.content.length - 1 } satisfies ResponsesOutputSlot;
@@ -557,7 +563,9 @@ export async function processResponsesStream<TApi extends Api>(
 			options.applyServiceTierPricing(output.usage, serviceTier);
 		}
 		// Map status to stop reason
-		output.stopReason = mapStopReason(response?.status);
+		const status = response?.status;
+		output.rawStopReason = status;
+		output.stopReason = mapStopReason(status);
 		if (output.content.some((b) => b.type === "toolCall") && output.stopReason === "stop") {
 			output.stopReason = "toolUse";
 		}
@@ -648,6 +656,7 @@ export async function processResponsesStream<TApi extends Api>(
 			pushToolCallDelta(slot, appendCustomToolCallInput(slot.block, event.input, true));
 		} else if (event.type === "response.output_item.done") {
 			const item = event.item;
+			applyMessagePhaseStopReason(item);
 			const slot = getOrCreateSlot(event.output_index, item);
 
 			if (item.type === "reasoning" && slot?.type === "thinking") {
@@ -709,6 +718,7 @@ export async function processResponsesStream<TApi extends Api>(
 			throw new Error(`Error Code ${event.code}: ${event.message}` || "Unknown error");
 		} else if (event.type === "response.failed") {
 			sawTerminalResponseEvent = true;
+			output.rawStopReason = event.response?.status;
 			const error = event.response?.error;
 			const details = event.response?.incomplete_details;
 			const msg = error
